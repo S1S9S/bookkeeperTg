@@ -11,7 +11,11 @@ const config: Config = {
       colors: {
         'magnolia': '#fcf7ff',
         'dark-purple': '#242038',
-        'state-blue': '#242038',
+        'state-blue': '#725ac1',
+        'dark': '#19191a',
+        'platinum': '#E6E8E6',
+        'purple': '#3423A6',
+        'custom-gray': '#353535',
       },
       backgroundImage: {
         "gradient-radial": "radial-gradient(var(--tw-gradient-stops))",
