@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { Doughnut } from 'react-chartjs-2';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -15,20 +16,65 @@ import {
 
 ChartJS.register(ArcElement, Tooltip, Legend, Title, CategoryScale, LinearScale);
 
+// Определение типа для продукта
+interface Product {
+  name: string;
+  income: number;
+}
+
+// Определение типа для пользователя
+interface User {
+  username: string;
+  avatar_url: string;
+}
+
 export default function HomePage() {
-  const user = {
-    name: 'Иван Иванов',
-    imageUrl: '/no-profile-picture-15257.png', 
-  };
+  const [products, setProducts] = useState<Product[]>([]);  // Массив продуктов с типом Product
+  const [totalIncome, setTotalIncome] = useState<number>(0);  // Общий доход с типом number
+  const [user, setUser] = useState<User | null>(null);  // Информация о пользователе
 
-  const income = 120000;
+  useEffect(() => {
+    // Запрос к бэкенду для получения данных продуктов
+    async function fetchProducts() {
+      try {
+        const response = await fetch('http://localhost:8000/api/products/income');
+        const data: Product[] = await response.json();
 
+        // Суммируем общий доход
+        const total = data.reduce((sum: number, product: Product) => sum + product.income, 0);
+        setTotalIncome(total);
+        setProducts(data);
+      } catch (error) {
+        console.error("Ошибка при получении данных с сервера:", error);
+      }
+    }
+
+    // Запрос к бэкенду для получения данных пользователя
+    async function fetchUser() {
+      try {
+        const response = await fetch('http://localhost:8000/api/users/me', {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,  // Токен авторизации
+          },
+        });
+        const data: User = await response.json();
+        setUser(data);
+      } catch (error) {
+        console.error("Ошибка при получении данных пользователя:", error);
+      }
+    }
+
+    fetchProducts();
+    fetchUser();
+  }, []);  // Запрос выполняется один раз при загрузке страницы
+
+  // Данные для диаграммы
   const pieData = {
-    labels: ['Profit', 'Attached', 'Free'],
+    labels: products.map(product => product.name),
     datasets: [
       {
-        data: [560, 280, 4000],
-        backgroundColor: ['#E71D36', '#3423A6', '#7D83FF'],
+        data: products.map(product => product.income),
+        backgroundColor: ['#E71D36', '#3423A6', '#7D83FF'],  // Цвета продуктов
         hoverBackgroundColor: ['#E71D36', '#3423A6', '#7D83FF'],
         borderWidth: 0,
         borderRadius: 0,
@@ -50,36 +96,34 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#19191a] text-[#E6E8E6] p-4 pb-6"> 
-      
       <div className="mb-4 p-4 bg-gradient-to-r from-[#353535] to-[#4a4a4a] rounded-xl shadow-lg flex items-center space-x-4">
-        <Image
-          src={user.imageUrl}
-          alt={user.name}
-          width={60}
-          height={60}
-          className="rounded-full object-cover border-2 border-[#725ac1] shadow-[0_0_15px_3px_rgba(114,90,193,0.6)]" 
-        />
-        <h1 className="text-xl font-semibold text-shadow-sm">{user.name}</h1>
+        {user ? (
+          <>
+            <Image
+              src={user.avatar_url}
+              alt={user.username}
+              width={60}
+              height={60}
+              className="rounded-full object-cover border-2 border-[#725ac1] shadow-[0_0_15px_3px_rgba(114,90,193,0.6)]" 
+            />
+            <h1 className="text-xl font-semibold text-shadow-sm">{user.username}</h1>
+          </>
+        ) : (
+          <p>Загрузка пользователя...</p>
+        )}
       </div>
 
-      
       <div className="flex flex-row items-center justify-between bg-gradient-to-r from-[#353535] to-[#4a4a4a] p-6 rounded-xl shadow-lg mb-4">
         <div className="flex flex-col justify-center items-start text-left space-y-2 w-1/2">
-          <p className="text-3xl font-bold text-shadow-sm">{income}₽</p>
+          <p className="text-3xl font-bold text-shadow-sm">{totalIncome}₽</p>
           <p className="text-gray-400 text-shadow-sm">Balance</p>
           <ul className="space-y-2">
-            <li className="text-sm flex items-center text-shadow-sm">
-              <span className="inline-block w-3 h-3 mr-2 rounded-full bg-[#E71D36]"></span>
-              Продукт1 50.000₽
-            </li>
-            <li className="text-sm flex items-center text-shadow-sm">
-              <span className="inline-block w-3 h-3 mr-2 rounded-full bg-[#3423A6]"></span>
-              Продукт2 35.000₽
-            </li>
-            <li className="text-sm flex items-center text-shadow-sm">
-              <span className="inline-block w-3 h-3 mr-2 rounded-full bg-[#7D83FF]"></span>
-              Продукт3 35.000₽
-            </li>
+            {products.map((product, index) => (
+              <li key={index} className="text-sm flex items-center text-shadow-sm">
+                <span className={`inline-block w-3 h-3 mr-2 rounded-full`} style={{ backgroundColor: pieData.datasets[0].backgroundColor[index] }}></span>
+                {product.name} {product.income}₽
+              </li>
+            ))}
           </ul>
         </div>
         <div className="w-1/2">
